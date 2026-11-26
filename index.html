@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>app-9x32a3v_Frontend</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    const SALTED_VAULT = {"salt":"PLACEHOLDER","iv":"PLACEHOLDER","cipher":"PLACEHOLDER"};
+  </script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex items-center justify-center p-6">
+  <div class="max-w-md w-full bg-zinc-900/80 border border-white/10 rounded-3xl p-6 space-y-4">
+    <h1 class="text-xl font-bold">app-9x32a3v_Frontend</h1>
+    <p class="text-xs text-zinc-400">אפליקציית Zero-Knowledge מחוברת ל-AutoGit Backend</p>
+    <input id="pwd" type="password" placeholder="סיסמת פתיחה..." class="w-full bg-black/50 border border-white/10 rounded-xl px-3.5 py-2 text-sm" />
+    <button onclick="unlockApp()" class="w-full py-2.5 rounded-xl bg-sky-500 text-black font-semibold text-sm">פתח וטען נתונים</button>
+    <pre id="out" dir="ltr" class="text-xs bg-black/60 p-3 rounded-xl overflow-x-auto text-emerald-300"></pre>
+  </div>
+  <script>
+    function b64ToBytes(b64) {
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return arr;
+    }
+    async function unlockApp() {
+      const pwd = document.getElementById('pwd').value;
+      const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(pwd), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: b64ToBytes(SALTED_VAULT.salt), iterations: 100000, hash: 'SHA-256' },
+        keyMat,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+      const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBytes(SALTED_VAULT.iv) }, key, b64ToBytes(SALTED_VAULT.cipher));
+      const endpoint = new TextDecoder().decode(dec);
+      const res = await fetch(endpoint);
+      document.getElementById('out').textContent = JSON.stringify(await res.json(), null, 2);
+    }
+  </script>
+</body>
+</html>
